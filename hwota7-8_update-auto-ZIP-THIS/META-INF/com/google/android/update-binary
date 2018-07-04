@@ -105,6 +105,7 @@ if [ -d "/external_sd/$VERSION" ]; then
   direct=external_sd
   stkdirect=sdcard
 fi
+# For future mod If usb path works in stock recovery
 if [ -d "/usbotg/$VERSION" ]; then
   direct=usbotg
   stkdirect=usb
@@ -155,7 +156,16 @@ ui_print "*Installing no-check version $NOCHECK       *"
 ui_print "*Recovery partiton used $NAME               *"
 ui_print "*********************************************"
 ui_print " "
-# Flashing no-check recovery
+ui_print " "
+ui_print " "
+ui_print " "
+ui_print "*********************************************"
+ui_print "*   NOW THE INSTALLER WILL CHECK FOR THE    *"
+ui_print "*    UPDATE FILES                           *"
+ui_print "*  THEY MUST BE IN THE FOLLOWING DIRECTORY  *"
+ui_print "*     /$direct/$VERSION                     *"
+ui_print "*********************************************"
+ui_print " "
 cd /$direct/$VERSION
 
 # CHECKING FOR ACTUAL NAMES OF LOADED UPDATE FILES
@@ -180,6 +190,7 @@ if [ "$hw" = "" ]; then
 	exit 0
 fi
 cd /
+# Flashing no-check recovery
 dd if=/$direct/$VERSION/$NOCHECK of=/dev/block/bootdevice/by-name/$NAME
 
 # THE ACTUAL UPDATE COMMANDS ARE SENT TO RECOVERY CACHE
