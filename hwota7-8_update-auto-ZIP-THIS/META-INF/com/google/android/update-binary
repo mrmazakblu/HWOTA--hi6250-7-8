@@ -1,0 +1,227 @@
+#!/sbin/sh
+
+# This install script verifies the version emui--android you start on 
+# by the files in /dev/block bootdevice
+# Based on the results of this check It will look for updte files
+# in HWOTA7 if on Nougat or in HWOTA8 if on Oreo
+# It will also determine if you are useing the sdcard or usbotg to store the files
+# All you need to do is: make the directory on your card or usb stick and add the
+# Three update files for your device. Then use twrp to install this zip
+# After succesesful flashing, the update files are deleted by device. 
+OUTFD=$2
+INPUTDEV=""
+VERSION=""
+
+# FUNCTION TO SIMULATE TWRP SCREEN PRINT COMMAND 
+ui_print() {
+  echo -n -e "ui_print $1\n" >> /proc/self/fd/$OUTFD
+  echo -n -e "ui_print\n" >> /proc/self/fd/$OUTFD
+}
+
+# TO FORCE SCREEN TO COME ON AND ALERT FOR MESSAGES  NOT REALY NEEDED HERE
+wakeup() {
+    echo 500 > /sys/class/timed_output/vibrator/enable
+    sleep 0.7
+    echo 500 > /sys/class/timed_output/vibrator/enable
+}
+
+# Taken from XZDualRecovery by [NUT]
+# Find the gpio-keys node, to listen on the right input event
+gpioKeysSearch() {
+    echo "Trying to find the gpio-keys event node."
+    for INPUTUEVENT in `find /sys/devices \( -path "*gpio*" -path "*key*" -a -path "*input?*" -a -path "*event?*" -a -name "uevent" \)`; do
+	INPUTDEV=$(grep "DEVNAME=" ${INPUTUEVENT} | sed 's/DEVNAME=//')
+	if [ -e "/dev/$INPUTDEV" -a "$INPUTDEV" != "" ]; then
+	echo "Found and will be using /dev/${INPUTDEV}!"
+	return 0
+	fi
+	done
+	return 1
+}
+
+keyCheck() {
+    KEY=$1
+    TIMEOUT=$2
+    
+	cat /dev/${INPUTDEV} > /dev/keycheck &
+	sleep 0.3
+	while [ $TIMEOUT -ne 0 ];
+	do
+	hexdump < /dev/keycheck > /dev/keycheckout
+	KEYCHECK=`cat /dev/keycheckout | grep "$KEY"`
+	if [ -n "$KEYCHECK" ]; then
+	killall cat
+	return 0
+	fi
+	sleep 1
+	TIMEOUT=$((TIMEOUT-1))
+	done
+	killall cat
+	return 1
+}
+
+if ls /dev/block/bootdevice/by-name/recovery > /dev/null 2>$1 ; then
+ VERSION="HWOTA7"
+fi
+if ls /dev/block/bootdevice/by-name/recovery_ramdisk > /dev/null 2>$1 ; then
+ VERSION="HWOTA8"
+fi
+if [ "$VERSION" = "" ]; then
+    ui_print "Version cannot be determined"
+	ui_print "ABORT"
+	exit 0
+fi
+
+# find input device
+gpioKeysSearch
+if [ ! -n "$INPUTDEV" ]; then
+	ui_print "Error finding input device"
+	exit 1
+fi
+
+# FIRST DISPLAYED MESSAGE FROM INSTALL, AFTER MESSAGES ABOUT MD5 CHECK
+ui_print " "
+ui_print "********************"
+ui_print "*      $VERSION      *"
+ui_print "*                  *"
+ui_print "********************"
+ui_print " "
+
+wakeup
+ui_print " "
+ui_print "Press VOLUME DOWN to START otherwise this script will abort in 10 seconds"
+            
+keyCheck "$VOLDOWN" 10
+ret=$?
+if [ "$ret" -ne 0 ];
+then
+	ui_print "ABORTED"
+	exit 0
+fi
+
+# USED TO DETERMINE IF UPDATE WILL USE SDCARD OR USBOTG
+direct=""
+if [ -d "/external_sd/$VERSION" ]; then
+  direct=external_sd
+  stkdirect=sdcard
+fi
+if [ -d "/usbotg/$VERSION" ]; then
+  direct=usbotg
+  stkdirect=usb
+fi
+ui_print "UPDATE USING"
+ui_print "$direct"
+if [ "$direct" = "" ]; then
+    ui_print "SDcard or USBotg Missing"
+	ui_print "ABORT"
+	exit 0
+fi
+# START OF RECOVERY REPLACEMENT SECTION
+ui_print " "
+ui_print "********************"
+ui_print "* FLASHING NoCheck *"
+ui_print "*  RECOVERY        *"
+ui_print "********************"
+ui_print " "
+# clearing recovery variables
+NOCHECK=""
+NAME=""
+#setting recovery variables
+if [ "$VERSION" = "HWOTA7" ]; then
+  NOCHECK=BND-RECOVERY-NoCheck.img
+  NAME=recovery
+fi
+if [ "$VERSION" = "HWOTA8" ]; then
+  NOCHECK=RecoveryNoCheckOreoHi6250.img
+  NAME=recovery_ramdisk
+fi
+#aborting if recovery variables did not get set
+if [ "$NAME" = "" ]; then
+    ui_print "Recovery partion not determined"
+	ui_print "ABORT"
+	exit 0
+fi
+if [ "$NOCHECK" = "" ]; then
+    ui_print "no-check recovery version not determined"
+	ui_print "ABORT"
+	exit 0
+fi
+# Displaying Variables used
+ui_print " "
+ui_print "*********************************************"
+ui_print "*Install from $direct                       *"
+ui_print "*Running $VERSION                           *"
+ui_print "*Installing no-check version $NOCHECK       *"
+ui_print "*Recovery partiton used $NAME               *"
+ui_print "*********************************************"
+ui_print " "
+# Flashing no-check recovery
+dd if=/$direct/$VERSION/$NOCHECK of=/dev/block/bootdevice/by-name/$NAME
+cd /$direct/$VERSION
+
+# CHECKING FOR ACTUAL NAMES OF LOADED UPDATE FILES
+# SCRIPT WILL BE UPDATED WITH FILE NAMES OR ABORT IF Missing
+update="$(find update.zip)"
+public="$(find *public*.zip)"
+hw="$(find *hw_*.zip)"
+if [ "$update" = "" ]; then
+    ui_print "UPDATE FILE NOT PRESENT"
+	ui_print "ABORT"
+	exit 0
+fi
+skip="skip"
+if [ "$public" = "" ]; then
+    ui_print "UPDATE PUBLIC FILE NOT PRESENT"
+	ui_print "Removeing Public update line"
+	skip=""
+fi
+if [ "$hw" = "" ]; then
+    ui_print "UPDATE HW FILE NOT PRESENT"
+	ui_print "ABORT"
+	exit 0
+fi
+cd /
+
+# THE ACTUAL UPDATE COMMANDS ARE SENT TO RECOVERY CACHE
+echo --update_package=/$stkdirect/$VERSION/$update > /cache/recovery/command
+if [ "$skip" = "" ]; then
+	echo --update_package=/$stkdirect/$VERSION/$public >> /cache/recovery/command
+fi
+echo --update_package=/$stkdirect/$VERSION/$hw >> /cache/recovery/command
+ui_print " "
+ui_print "********************"
+ui_print "*      Read        *"
+ui_print "*     Back of      *"
+ui_print "*      SENT        *"
+ui_print "*    COMMANDS      *" 
+ui_print "********************"
+ui_print " "
+
+# VERIFING THE COMMANDS ARE SENT ONLY VISUAL FOR OPERATOR
+while read LINE
+    do ui_print "$LINE" 
+done < /cache/recovery/command
+
+# Confirmation OF flashing Done by user pressing Volume button 
+wakeup
+ui_print " "
+ui_print "Press VOLUME DOWN to REBOOT"
+ui_print " into Stock Recovery to start flashing"
+ui_print " otherwise this script will abort in 10 seconds"
+            
+keyCheck "$VOLDOWN" 10
+ret=$?
+if [ "$ret" -ne 0 ];
+then
+	ui_print "ABORTED"
+	exit 0
+fi
+
+wakeup
+ui_print " "
+ui_print "**********************"
+ui_print "**********************"
+ui_print " "
+reboot recovery
+exit 0
+

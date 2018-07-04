@@ -1,0 +1,34 @@
+Basic instructions 
+
+hwota7-8_update-auto-.zip is to be installed with twrp.
+
+The install will check the version of android you are starting on and select correct folder to look at for the update files.
+
+*****The script will determine the media used (either sdcard or usb otg) based on the folders it finds. (/sdcard/*) or (/usbotg/*) 
+It checks last for the usbotg, so if you have the files on sdcard from previous install and this time use usb, 
+you will not need to clear the sdcard.*******Not working with USB***
+
+You need to add a folder to put your update files in it.
+
+If you are on android 7 you need to have folder name = HWOTA7
+If you are on android 8 you need to have folder name = HWOTA8
+
+Needs to be three update files. (2 if downgrade)
+The file names should work the way they are downloaded from Hauwei
+update.zip
+update_**_public.zip
+update_**hw_**.zip
+
+The install script will handle any renaming if needed, as long as this basic format holds true.
+
+Included in this zip package are two folders (HWOAT7 , HWOAT8) In these folder are the no-check recovery images needed for this process. 
+And there are batch files to automate installing twrp, if you do not already have twrp installed.
+Copy the two folders and the hwota7-8_update-auto-.zip to your sdcard. 
+Put your update files into the folder that matches your current build. ( HWOTA7= emui5/ android 7 )  ( HWOTA8= emui8 / android 8 ). 
+You can put them into both if you want to, because when the install is done the files are cleared form the folder, by stock update process.
+
+There are two (2) prompts for you to press volume button to confirm the install. So it does not have to continue 
+if you see something wrong in the displayed messages. 
+
+
+
