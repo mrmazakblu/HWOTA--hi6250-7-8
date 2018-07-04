@@ -1,10 +1,16 @@
 #!/sbin/sh
 
-dd if=/external_sd/restore-package/boot.img of=/dev/block/mmcblk0p28
-dd if=/external_sd/restore-package/cust.img of=/dev/block/mmcblk0p45
-dd if=/external_sd/restore-package/product.img of=/dev/block/mmcblk0p48
-dd if=/external_sd/restore-package/system.img of=/dev/block/mmcblk0p44
-dd if=/external_sd/restore-package/vendor.img of=/dev/block/mmcblk0p47
-dd if=/external_sd/restore-package/version.img of=/dev/block/mmcblk0p46
-
-
+#dd if=/external_sd/restore-package/boot.img of=/dev/block/mmcblk0p28
+#dd if=/external_sd/restore-package/cust.img of=/dev/block/mmcblk0p45
+#dd if=/external_sd/restore-package/product.img of=/dev/block/mmcblk0p48
+#dd if=/external_sd/restore-package/system.img of=/dev/block/mmcblk0p44
+#dd if=/external_sd/restore-package/vendor.img of=/dev/block/mmcblk0p47
+#dd if=/external_sd/restore-package/version.img of=/dev/block/mmcblk0p46
+source=/external_sd/restore-package
+dest=/dev/block/bootdevice/by-name
+dd if=$source/boot.img of=$dest/boot
+dd if=$source/cust.img of=$dest/cust
+dd if=$source/product.img of=$dest/product
+dd if=$source/system.img of=$dest/system
+dd if=$source/vendor.img of=$dest/vendor
+dd if=$source/version.img of=$dest/version
